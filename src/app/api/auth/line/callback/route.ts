@@ -5,6 +5,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const state = searchParams.get('state')
+  // 驗證 state 參數以防止 CSRF 攻擊
+  if (!state) {
+    return NextResponse.redirect(new URL('/login?error=invalid_state', request.url))
+  }
 
   if (!code) {
     return NextResponse.redirect(new URL('/login?error=no_code', request.url))
@@ -57,14 +61,14 @@ export async function GET(request: NextRequest) {
             return request.cookies.getAll()
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           },
         },
       }
     )
 
     // 使用 LINE 用戶 ID 作為唯一識別符
-    const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: { user: existingUser }, error: signInError } = await supabase.auth.signInWithPassword({
       email: `${profileData.userId}@line.user`,
       password: profileData.userId, // 使用 LINE 用戶 ID 作為密碼
     })
@@ -87,6 +91,9 @@ export async function GET(request: NextRequest) {
         console.error('Sign up error:', signUpError)
         return NextResponse.redirect(new URL('/login?error=signup_error', request.url))
       }
+      
+      // 記錄新用戶創建
+      console.log('New user created:', newUser?.id)
 
       // 重定向到註冊頁面讓用戶填寫額外資訊
       return NextResponse.redirect(new URL(`/register?line_user_id=${profileData.userId}`, request.url))

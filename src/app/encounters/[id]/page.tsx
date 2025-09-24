@@ -53,9 +53,9 @@ export default function EncounterDetail() {
           const patients = JSON.parse(storedPatients)
           const encounters = JSON.parse(storedEncounters)
           
-          const encounter = encounters.find((e: any) => e.id === encounterId)
+          const encounter = encounters.find((e: { id: string; patient_id: string }) => e.id === encounterId)
           if (encounter) {
-            const patient = patients.find((p: any) => p.id === encounter.patient_id)
+            const patient = patients.find((p: { id: string }) => p.id === encounter.patient_id)
             if (patient) {
               setPatient(patient)
               setEncounter(encounter)

@@ -14,7 +14,7 @@ interface Patient {
 }
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ email?: string; user_metadata?: { name?: string; profession?: string } } | null>(null)
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

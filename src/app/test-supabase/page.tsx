@@ -63,7 +63,7 @@ export default function TestSupabase() {
         const supabase = createClient()
         const tables = ['patients', 'medical_staff', 'encounters', 'consents']
         let allTablesExist = true
-        let missingTables: string[] = []
+        const missingTables: string[] = []
 
         for (const table of tables) {
           const { error } = await supabase.from(table).select('*').limit(1)

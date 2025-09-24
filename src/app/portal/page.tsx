@@ -26,7 +26,7 @@ export default function Portal() {
         
         if (storedPatients) {
           const patients = JSON.parse(storedPatients)
-          const patient = patients.find((p: any) => 
+          const patient = patients.find((p: { name: string; phone: string }) => 
             p.name === name && p.phone === phone
           )
           
@@ -131,9 +131,9 @@ export default function Portal() {
           </form>
 
           <div className="mt-6 text-center">
-            <a href="/" className="text-green-600 hover:text-green-800 text-sm">
+            <Link href="/" className="text-green-600 hover:text-green-800 text-sm">
               返回首頁
-            </a>
+            </Link>
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ interface Patient {
   medical_history: string
   allergies: string
   notes: string
-  files?: any[]
+  files?: { name: string; url: string }[]
   audio_url?: string
   created_at: string
 }
