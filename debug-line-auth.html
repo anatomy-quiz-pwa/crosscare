@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LINE Auth Debug</title>
+</head>
+<body>
+    <h1>LINE Auth Debug</h1>
+    <div id="debug-info"></div>
+    
+    <script>
+        // 檢查環境變數
+        const debugInfo = document.getElementById('debug-info');
+        
+        const clientId = process?.env?.NEXT_PUBLIC_LINE_CLIENT_ID || 'NOT_FOUND';
+        const baseUrl = process?.env?.NEXT_PUBLIC_BASE_URL || 'NOT_FOUND';
+        
+        debugInfo.innerHTML = `
+            <p><strong>NEXT_PUBLIC_LINE_CLIENT_ID:</strong> ${clientId}</p>
+            <p><strong>NEXT_PUBLIC_BASE_URL:</strong> ${baseUrl}</p>
+            <p><strong>完整的 redirect_uri:</strong> ${baseUrl}/api/auth/line/callback</p>
+            <p><strong>編碼後的 redirect_uri:</strong> ${encodeURIComponent(baseUrl + '/api/auth/line/callback')}</p>
+        `;
+        
+        // 生成 LINE Auth URL
+        const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(baseUrl + '/api/auth/line/callback')}&state=test123&scope=profile%20openid`;
+        
+        debugInfo.innerHTML += `<p><strong>完整的 LINE Auth URL:</strong></p><p style="word-break: break-all;">${lineAuthUrl}</p>`;
+        
+        // 添加測試按鈕
+        const testButton = document.createElement('button');
+        testButton.textContent = '測試 LINE 登入';
+        testButton.onclick = () => window.location.href = lineAuthUrl;
+        debugInfo.appendChild(testButton);
+    </script>
+</body>
+</html>
