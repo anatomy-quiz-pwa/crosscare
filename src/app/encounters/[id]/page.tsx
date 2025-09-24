@@ -100,7 +100,7 @@ export default function EncounterDetail() {
       }
 
       setPatient(patientData)
-    } catch (err) {
+    } catch {
       setError('載入資料時發生錯誤')
     } finally {
       setLoading(false)

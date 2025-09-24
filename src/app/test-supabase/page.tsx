@@ -47,7 +47,7 @@ export default function TestSupabase() {
       // 測試 2: Supabase 連接
       try {
         const supabase = createClient()
-        const { data, error } = await supabase.from('patients').select('count').limit(1)
+        const { error } = await supabase.from('patients').select('count').limit(1)
         
         if (error) {
           updateTest(1, 'error', `連接失敗: ${error.message}`)

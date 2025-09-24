@@ -55,7 +55,7 @@ export default function PatientPortal() {
         
         if (storedPatients) {
           const patients = JSON.parse(storedPatients)
-          const patient = patients.find((p: any) => p.id === patientId)
+          const patient = patients.find((p: { id: string }) => p.id === patientId)
           
           if (patient) {
             setPatient(patient)
@@ -63,7 +63,7 @@ export default function PatientPortal() {
             // 載入該病患的診療記錄
             if (storedEncounters) {
               const encounters = JSON.parse(storedEncounters)
-              const patientEncounters = encounters.filter((e: any) => e.patient_id === patientId)
+              const patientEncounters = encounters.filter((e: { patient_id: string }) => e.patient_id === patientId)
               setEncounters(patientEncounters)
             }
             

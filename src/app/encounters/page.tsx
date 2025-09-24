@@ -90,7 +90,7 @@ export default function Encounters() {
       }
 
       setEncounters(encountersData || [])
-    } catch (err) {
+    } catch {
       setError('載入資料時發生錯誤')
     } finally {
       setLoading(false)

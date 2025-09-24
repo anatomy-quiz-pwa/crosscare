@@ -33,7 +33,7 @@ export default function Login() {
       } else {
         router.push('/dashboard')
       }
-    } catch (err) {
+    } catch {
       setError('登入時發生錯誤')
     } finally {
       setLoading(false)

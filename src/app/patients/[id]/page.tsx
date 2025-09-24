@@ -90,7 +90,7 @@ export default function PatientDetail() {
 
       setPatient(data)
       setFormData(data)
-    } catch (err) {
+    } catch {
       setError('載入資料時發生錯誤')
     } finally {
       setLoading(false)
@@ -141,7 +141,7 @@ export default function PatientDetail() {
 
       setPatient(formData)
       setIsEditing(false)
-    } catch (err) {
+    } catch {
       setError('更新時發生錯誤')
     }
   }

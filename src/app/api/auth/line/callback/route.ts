@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     )
 
     // 使用 LINE 用戶 ID 作為唯一識別符
-    const { data: { user: existingUser }, error: signInError } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email: `${profileData.userId}@line.user`,
       password: profileData.userId, // 使用 LINE 用戶 ID 作為密碼
     })

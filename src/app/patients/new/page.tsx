@@ -33,7 +33,7 @@ export default function NewPatient() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [audioUrl, setAudioUrl] = useState<string>('')
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
-  const [fileUrls, setFileUrls] = useState<string[]>([])
+  const [, setFileUrls] = useState<string[]>([])
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const router = useRouter()
 

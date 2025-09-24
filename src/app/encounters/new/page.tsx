@@ -70,7 +70,7 @@ export default function NewEncounter() {
       }
 
       setPatients(data || [])
-    } catch (err) {
+    } catch {
       setError('載入病患資料時發生錯誤')
     }
   }
@@ -141,7 +141,7 @@ export default function NewEncounter() {
       setTimeout(() => {
         router.push('/encounters')
       }, 2000)
-    } catch (err) {
+    } catch {
       console.error('新增診療記錄錯誤:', err)
       setError('新增診療記錄時發生錯誤')
     } finally {
