@@ -10,10 +10,10 @@ interface Patient {
   chief_complaint: string
   first_visit_date: string
   phone: string
-  address: string
-  medical_history: string
-  allergies: string
-  notes: string
+  address?: string
+  medical_history?: string
+  allergies?: string
+  notes?: string
 }
 
 interface EncounterForm {
