@@ -142,7 +142,7 @@ export default function NewEncounter() {
         router.push('/encounters')
       }, 2000)
     } catch {
-      console.error('新增診療記錄錯誤:', err)
+      console.error('新增診療記錄錯誤')
       setError('新增診療記錄時發生錯誤')
     } finally {
       setLoading(false)
