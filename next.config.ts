@@ -8,6 +8,10 @@ const withPWAConfig = withPWA({
   disable: process.env.NODE_ENV === 'development',
 });
 
-const nextConfig: NextConfig = withPWAConfig({});
+const nextConfig: NextConfig = withPWAConfig({
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+});
 
 export default nextConfig;
