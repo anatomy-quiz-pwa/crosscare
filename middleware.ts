@@ -5,19 +5,20 @@ const ALLOW_LIST = [
   "/",
   "/login",
   "/api/auth/line/",
+  "/api/auth/session",
   "/api/debug-line",
   "/_next/",
   "/static/",
   "/favicon.ico",
 ];
 
-function isAllowed(pathname: string) {
+function allowed(pathname: string) {
   return ALLOW_LIST.some((p) => pathname === p || pathname.startsWith(p));
 }
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (isAllowed(pathname)) return NextResponse.next();
+  if (allowed(pathname)) return NextResponse.next();
 
   // 檢查 session cookie
   const session = req.cookies.get("session")?.value;

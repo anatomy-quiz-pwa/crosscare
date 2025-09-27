@@ -9,21 +9,28 @@ function resolveRedirectUri(req: NextRequest) {
   return `${proto}://${host}/api/auth/line/callback`;
 }
 
+function backToLogin(req: NextRequest, params: Record<string, string>) {
+  const url = new URL("/login", req.nextUrl.origin);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  return NextResponse.redirect(url);
+}
+
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
+
   if (error) {
-    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error)}`, req.nextUrl.origin));
+    return backToLogin(req, { error: "oauth_error", detail: error });
   }
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=missing_code", req.nextUrl.origin));
+    return backToLogin(req, { error: "missing_code" });
   }
 
   const redirectUri = resolveRedirectUri(req);
 
-  // 1) 授權碼換 token
-  const body = new URLSearchParams({
+  // 1) 用授權碼換 token
+  const form = new URLSearchParams({
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri,
@@ -34,42 +41,48 @@ export async function GET(req: NextRequest) {
   const tokenRes = await fetch("https://api.line.me/oauth2/v2.1/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-    // @ts-expect-error: next runtime hints
+    body: form,
+    // @ts-expect-error
     cache: "no-store",
   });
 
+  const rawToken = await tokenRes.text();
   if (!tokenRes.ok) {
-    const detail = await tokenRes.text();
-    return NextResponse.redirect(
-      new URL(`/login?error=token_exchange_failed&detail=${encodeURIComponent(detail)}`, req.nextUrl.origin)
-    );
+    return backToLogin(req, {
+      error: "token_exchange_failed",
+      detail: rawToken.slice(0, 800),
+    });
   }
 
-  const token = await tokenRes.json();
+  const token = JSON.parse(rawToken);
 
-  // 2) 取使用者 profile（或驗 ID token）
+  // 2) 取使用者 profile
   const profileRes = await fetch("https://api.line.me/v2/profile", {
     headers: { Authorization: `Bearer ${token.access_token}` },
     // @ts-expect-error
     cache: "no-store",
   });
+  const rawProfile = await profileRes.text();
   if (!profileRes.ok) {
-    const detail = await profileRes.text();
-    return NextResponse.redirect(
-      new URL(`/login?error=profile_failed&detail=${encodeURIComponent(detail)}`, req.nextUrl.origin)
-    );
+    return backToLogin(req, {
+      error: "profile_failed",
+      detail: rawProfile.slice(0, 800),
+    });
   }
-  const profile = await profileRes.json();
+  const profile = JSON.parse(rawProfile);
 
-  // 3) 設置 Session（最小必要資訊）
+  // 3) 設定 Session
   setSession({
     provider: "line",
-    sub: profile.userId, // LINE 的使用者 id
+    sub: profile.userId,
     name: profile.displayName,
     picture: profile.pictureUrl ?? null,
   });
 
-  // 4) 導回受保護頁
-  return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
+  // 4) 確認 cookie 是否已寫入（避免被瀏覽器策略擋掉）
+  const hasCookie = req.cookies.get("session") ? "1" : "0"; // API Route 內通常拿不到新值，僅作參考
+  const redirect = new URL("/dashboard", req.nextUrl.origin);
+  redirect.searchParams.set("logged", "1");
+  redirect.searchParams.set("ck", hasCookie);
+  return NextResponse.redirect(redirect);
 }

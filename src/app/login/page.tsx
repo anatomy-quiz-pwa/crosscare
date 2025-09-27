@@ -1,64 +1,30 @@
-'use client'
+"use client";
+import React, { useMemo } from "react";
 
-import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
-import Link from 'next/link'
+function getAuthorizeUrl(redirectUri: string, clientId: string) {
+  const u = new URL("https://access.line.me/oauth2/v2.1/authorize");
+  u.searchParams.set("response_type", "code");
+  u.searchParams.set("client_id", String(clientId));
+  u.searchParams.set("redirect_uri", redirectUri);
+  u.searchParams.set("scope", "profile openid email");
+  u.searchParams.set("state", Math.random().toString(36).slice(2));
+  return u.toString();
+}
 
-function LoginForm() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
-  const searchParams = useSearchParams()
+export default function LoginPage() {
+  const search = typeof window !== "undefined" ? window.location.search : "";
+  const qs = useMemo(() => new URLSearchParams(search), [search]);
+  const error = qs.get("error");
+  const detail = qs.get("detail");
 
-  // 檢查 URL 參數中的錯誤訊息
-  const urlError = searchParams.get('error')
-  
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-
-    try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) {
-        setError(error.message)
-      } else {
-        router.push('/dashboard')
-      }
-    } catch {
-      setError('登入時發生錯誤')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleLineLogin = () => {
-    // 檢查是否有設定 LINE 環境變數
-    if (!process.env.NEXT_PUBLIC_LINE_CLIENT_ID) {
-      setError('LINE 登入尚未設定，請先設定環境變數')
-      return
-    }
-
+  const onLogin = () => {
     const origin = window.location.origin;
-    const redirectUri = process.env.NEXT_PUBLIC_LINE_REDIRECT_URI || `${origin}/api/auth/line/callback`;
+    const redirectUri =
+      process.env.NEXT_PUBLIC_LINE_REDIRECT_URI ||
+      `${origin}/api/auth/line/callback`;
     const clientId = process.env.NEXT_PUBLIC_LINE_CLIENT_ID!;
-    
-    const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${Math.random().toString(36).substring(7)}&scope=profile%20openid`
-    window.location.href = lineAuthUrl
-  }
-
-  const handleDemoLogin = () => {
-    // 模擬 LINE 登入成功，直接進入註冊頁面
-    router.push('/register?line_user_id=demo_user_123')
-  }
+    window.location.href = getAuthorizeUrl(redirectUri, clientId);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -71,10 +37,23 @@ function LoginForm() {
             <p className="text-gray-600">醫療人員登入</p>
           </div>
 
+          {error && (
+            <div className="mb-6 border border-red-200 rounded-lg p-4 bg-red-50">
+              <div className="font-medium mb-2 text-red-800">登入失敗：{error}</div>
+              {detail ? (
+                <pre className="text-xs text-red-700 whitespace-pre-wrap break-all bg-red-100 p-2 rounded">
+                  {detail}
+                </pre>
+              ) : (
+                <div className="text-red-600 text-sm">（無詳細訊息）</div>
+              )}
+            </div>
+          )}
+
           {/* LINE 登入按鈕 */}
           <div className="mb-6">
             <button
-              onClick={handleLineLogin}
+              onClick={onLogin}
               className="w-full bg-green-500 text-white py-3 px-4 rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center justify-center space-x-2"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -84,103 +63,13 @@ function LoginForm() {
             </button>
           </div>
 
-          {/* 測試登入按鈕 */}
-          <div className="mb-6">
-            <button
-              onClick={handleDemoLogin}
-              className="w-full bg-yellow-500 text-white py-3 px-4 rounded-lg hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 flex items-center justify-center space-x-2"
-            >
-              <span>🧪 測試登入（開發模式）</span>
-            </button>
-          </div>
-
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">或使用電子郵件登入</span>
-            </div>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                電子郵件
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="請輸入您的電子郵件"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                密碼
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="請輸入您的密碼"
-              />
-            </div>
-
-            {(error || urlError) && (
-              <div className="text-red-600 text-sm text-center">
-                {error || (urlError === 'missing_code' && '授權碼遺失') || 
-                       (urlError === 'token_exchange_failed' && 'Token 交換失敗') ||
-                       (urlError === 'profile_failed' && '個人資料獲取失敗') ||
-                       (urlError === 'signup_error' && '註冊失敗') ||
-                       (urlError === 'callback_error' && '回調處理錯誤') ||
-                       '登入時發生錯誤'}
-                {searchParams.get("detail") && (
-                  <pre className="mt-2 whitespace-pre-wrap break-all text-xs bg-gray-100 p-2 rounded">
-                    {searchParams.get("detail")}
-                  </pre>
-                )}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? '登入中...' : '登入'}
-            </button>
-          </form>
-
           <div className="mt-6 text-center">
-            <Link href="/" className="text-blue-600 hover:text-blue-800 text-sm">
+            <a href="/" className="text-blue-600 hover:text-blue-800 text-sm">
               返回首頁
-            </Link>
+            </a>
           </div>
         </div>
       </div>
     </div>
-  )
-}
-
-export default function Login() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">載入中...</p>
-        </div>
-      </div>
-    }>
-      <LoginForm />
-    </Suspense>
-  )
+  );
 }
