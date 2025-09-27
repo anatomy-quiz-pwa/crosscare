@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ENV } from "@/lib/env";
+import { ENV, missingEnvKeys } from "@/lib/env";
 import { setSession } from "@/lib/session";
 
 function resolveRedirectUri(req: NextRequest) {
@@ -27,36 +27,39 @@ export async function GET(req: NextRequest) {
     return backToLogin(req, { error: "missing_code" });
   }
 
+  // 先檢查 env，避免送出空 client_id
+  const miss = missingEnvKeys();
+  if (miss.length) {
+    return backToLogin(req, {
+      error: "server_env_missing",
+      detail: `Missing: ${miss.join(", ")}`
+    });
+  }
+
   const redirectUri = resolveRedirectUri(req);
 
-  // 1) 用授權碼換 token
-  const form = new URLSearchParams({
+  const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri,
-    client_id: ENV.LINE_CHANNEL_ID,
+    client_id: ENV.LINE_CHANNEL_ID,         // ← 這裡以前是空的
     client_secret: ENV.LINE_CHANNEL_SECRET,
   });
 
   const tokenRes = await fetch("https://api.line.me/oauth2/v2.1/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: form,
+    body,
     // @ts-expect-error
     cache: "no-store",
   });
 
   const rawToken = await tokenRes.text();
   if (!tokenRes.ok) {
-    return backToLogin(req, {
-      error: "token_exchange_failed",
-      detail: rawToken.slice(0, 800),
-    });
+    return backToLogin(req, { error: "token_exchange_failed", detail: rawToken.slice(0, 800) });
   }
-
   const token = JSON.parse(rawToken);
 
-  // 2) 取使用者 profile
   const profileRes = await fetch("https://api.line.me/v2/profile", {
     headers: { Authorization: `Bearer ${token.access_token}` },
     // @ts-expect-error
@@ -64,14 +67,10 @@ export async function GET(req: NextRequest) {
   });
   const rawProfile = await profileRes.text();
   if (!profileRes.ok) {
-    return backToLogin(req, {
-      error: "profile_failed",
-      detail: rawProfile.slice(0, 800),
-    });
+    return backToLogin(req, { error: "profile_failed", detail: rawProfile.slice(0, 800) });
   }
   const profile = JSON.parse(rawProfile);
 
-  // 3) 設定 Session
   setSession({
     provider: "line",
     sub: profile.userId,
@@ -79,10 +78,5 @@ export async function GET(req: NextRequest) {
     picture: profile.pictureUrl ?? null,
   });
 
-  // 4) 確認 cookie 是否已寫入（避免被瀏覽器策略擋掉）
-  const hasCookie = req.cookies.get("session") ? "1" : "0"; // API Route 內通常拿不到新值，僅作參考
-  const redirect = new URL("/dashboard", req.nextUrl.origin);
-  redirect.searchParams.set("logged", "1");
-  redirect.searchParams.set("ck", hasCookie);
-  return NextResponse.redirect(redirect);
+  return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
 }
