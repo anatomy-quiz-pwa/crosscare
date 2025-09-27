@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { ENV } from '@/lib/env'
+
+// 動態建立 redirectUri：若 .env 有 LINE_REDIRECT_URI 就用它（建議 Production 固定），
+// 否則以這次請求的 Host 推導（可支援 Preview）
+function resolveRedirectUri(req: NextRequest) {
+  if (ENV.LINE_REDIRECT_URI) return ENV.LINE_REDIRECT_URI;
+  const origin = req.headers.get("x-forwarded-host")
+    ? `${req.headers.get("x-forwarded-proto") ?? "https"}://${req.headers.get("x-forwarded-host")}`
+    : req.nextUrl.origin;
+  return `${origin}/api/auth/line/callback`;
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const state = searchParams.get('state')
+  
   // 驗證 state 參數以防止 CSRF 攻擊
   if (!state) {
     return NextResponse.redirect(new URL('/login?error=invalid_state', request.url))
@@ -15,6 +27,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const redirectUri = resolveRedirectUri(request);
+    
     // 使用 LINE 授權碼交換 access token
     const tokenResponse = await fetch('https://api.line.me/oauth2/v2.1/token', {
       method: 'POST',
@@ -24,9 +38,9 @@ export async function GET(request: NextRequest) {
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
-        redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, '')}/api/auth/line/callback`,
-        client_id: process.env.NEXT_PUBLIC_LINE_CLIENT_ID!,
-        client_secret: process.env.LINE_CLIENT_SECRET!,
+        redirect_uri: redirectUri,
+        client_id: ENV.LINE_CHANNEL_ID,
+        client_secret: ENV.LINE_CHANNEL_SECRET,
       }),
     })
 

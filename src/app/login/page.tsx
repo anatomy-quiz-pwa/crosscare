@@ -47,7 +47,11 @@ function LoginForm() {
       return
     }
 
-    const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_LINE_CLIENT_ID}&redirect_uri=${encodeURIComponent((process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, '') || '') + '/api/auth/line/callback')}&state=${Math.random().toString(36).substring(7)}&scope=profile%20openid`
+    // 使用動態推導的 redirect_uri，確保與 callback 一致
+    const origin = window.location.origin;
+    const redirectUri = process.env.NEXT_PUBLIC_LINE_REDIRECT_URI || `${origin}/api/auth/line/callback`;
+    
+    const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_LINE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${Math.random().toString(36).substring(7)}&scope=profile%20openid`
     window.location.href = lineAuthUrl
   }
 
