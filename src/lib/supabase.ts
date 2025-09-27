@@ -18,7 +18,7 @@ export function createClient() {
         }),
         insert: () => Promise.resolve({ data: null, error: null })
       })
-    } as any
+    } as unknown as ReturnType<typeof createBrowserClient>
   }
 
   // 檢查環境變數是否存在
@@ -38,7 +38,7 @@ export function createClient() {
         }),
         insert: () => Promise.reject(new Error('Supabase 環境變數未設定'))
       })
-    } as any
+    } as unknown as ReturnType<typeof createBrowserClient>
   }
 
   return createBrowserClient(
