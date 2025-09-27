@@ -47,7 +47,7 @@ function LoginForm() {
       return
     }
 
-    const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_LINE_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_BASE_URL + '/api/auth/line/callback')}&state=${Math.random().toString(36).substring(7)}&scope=profile%20openid`
+    const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_LINE_CLIENT_ID}&redirect_uri=${encodeURIComponent((process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, '') || '') + '/api/auth/line/callback')}&state=${Math.random().toString(36).substring(7)}&scope=profile%20openid`
     window.location.href = lineAuthUrl
   }
 

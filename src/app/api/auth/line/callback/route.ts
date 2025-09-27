@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
-        redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/line/callback`,
+        redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, '')}/api/auth/line/callback`,
         client_id: process.env.NEXT_PUBLIC_LINE_CLIENT_ID!,
         client_secret: process.env.LINE_CLIENT_SECRET!,
       }),

@@ -12,7 +12,7 @@ export async function GET() {
   }
 
   // 生成 redirect_uri
-  const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/line/callback`
+  const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, '')}/api/auth/line/callback`
   
   // 生成 LINE Auth URL
   const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_LINE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=debug123&scope=profile%20openid`

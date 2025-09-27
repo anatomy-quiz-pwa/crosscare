@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>測試登入功能</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>CrossCare 測試登入功能</h1>
+    
+    <div class="test-section">
+        <h2>1. 測試模式設定</h2>
+        <button onclick="setTestMode()">設定測試模式</button>
+        <button onclick="clearTestMode()">清除測試模式</button>
+        <div id="test-mode-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 測試登入流程</h2>
+        <button onclick="testLogin()">模擬測試登入</button>
+        <button onclick="testRegister()">模擬註冊</button>
+        <div id="login-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 跳轉測試</h2>
+        <button onclick="goToLogin()">前往登入頁面</button>
+        <button onclick="goToRegister()">前往註冊頁面</button>
+        <button onclick="goToDashboard()">前往儀表板</button>
+    </div>
+
+    <script>
+        function setTestMode() {
+            localStorage.setItem('test_mode', 'true');
+            localStorage.setItem('test_user_name', '測試用戶');
+            localStorage.setItem('test_user_profession', '醫師');
+            updateTestModeStatus();
+        }
+        
+        function clearTestMode() {
+            localStorage.removeItem('test_mode');
+            localStorage.removeItem('test_user_name');
+            localStorage.removeItem('test_user_profession');
+            localStorage.removeItem('test_patients');
+            localStorage.removeItem('test_encounters');
+            updateTestModeStatus();
+        }
+        
+        function updateTestModeStatus() {
+            const isTestMode = localStorage.getItem('test_mode') === 'true';
+            const status = document.getElementById('test-mode-status');
+            if (isTestMode) {
+                status.innerHTML = '<div class="success">✅ 測試模式已啟用</div>';
+            } else {
+                status.innerHTML = '<div class="error">❌ 測試模式未啟用</div>';
+            }
+        }
+        
+        function testLogin() {
+            setTestMode();
+            document.getElementById('login-status').innerHTML = '<div class="success">✅ 測試登入成功！已設定測試模式</div>';
+        }
+        
+        function testRegister() {
+            setTestMode();
+            document.getElementById('login-status').innerHTML = '<div class="success">✅ 測試註冊成功！已設定用戶資料</div>';
+        }
+        
+        function goToLogin() {
+            window.location.href = '/login';
+        }
+        
+        function goToRegister() {
+            window.location.href = '/register?line_user_id=demo_user_123';
+        }
+        
+        function goToDashboard() {
+            window.location.href = '/dashboard';
+        }
+        
+        // 頁面載入時檢查狀態
+        updateTestModeStatus();
+    </script>
+</body>
+</html>
+
+
