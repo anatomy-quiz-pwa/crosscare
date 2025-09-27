@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ENV } from "@/lib/env";
 
-function resolveRedirectUri(req: NextRequest) {
-  if (ENV.LINE_REDIRECT_URI) return ENV.LINE_REDIRECT_URI;
+function redirectUriFromReq(req: NextRequest) {
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
-  const host = req.headers.get("x-forwarded-host") ?? req.nextUrl.host;
+  const host  = req.headers.get("x-forwarded-host")  ?? req.nextUrl.host;
   return `${proto}://${host}/api/auth/line/callback`;
 }
 
 export async function GET(req: NextRequest) {
-  const redirectUri = resolveRedirectUri(req);
-  const clientId = ENV.LINE_CHANNEL_ID || "";
+  const redirectUri = redirectUriFromReq(req);
+  const clientId = ENV.LINE_CHANNEL_ID || process.env.NEXT_PUBLIC_LINE_CLIENT_ID || "";
   if (!clientId) {
     const u = new URL("/login", req.nextUrl.origin);
     u.searchParams.set("error", "server_env_missing");

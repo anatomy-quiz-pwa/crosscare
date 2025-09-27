@@ -1,11 +1,8 @@
 "use client";
 import React, { useMemo } from "react";
-
 export default function LoginPage() {
   const qs = useMemo(() => new URLSearchParams(typeof window !== "undefined" ? window.location.search : ""), []);
-  const error = qs.get("error");
-  const detail = qs.get("detail");
-
+  const error = qs.get("error"); const detail = qs.get("detail");
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
       <div className="max-w-md w-full mx-4">
