@@ -38,7 +38,7 @@ export default function Dashboard() {
     } else {
       // 真實模式：檢查 Supabase 用戶
       const supabase = createClient()
-      supabase.auth.getUser().then(({ data: { user } }) => {
+      supabase.auth.getUser().then(({ data: { user } }: { data: { user: any } }) => {
         if (!user) {
           router.push('/login')
           return
