@@ -1,123 +1,75 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { ENV } from '@/lib/env'
+import { NextRequest, NextResponse } from "next/server";
+import { ENV } from "@/lib/env";
+import { setSession } from "@/lib/session";
 
-// 動態建立 redirectUri：若 .env 有 LINE_REDIRECT_URI 就用它（建議 Production 固定），
-// 否則以這次請求的 Host 推導（可支援 Preview）
 function resolveRedirectUri(req: NextRequest) {
   if (ENV.LINE_REDIRECT_URI) return ENV.LINE_REDIRECT_URI;
-  const origin = req.headers.get("x-forwarded-host")
-    ? `${req.headers.get("x-forwarded-proto") ?? "https"}://${req.headers.get("x-forwarded-host")}`
-    : req.nextUrl.origin;
-  return `${origin}/api/auth/line/callback`;
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const host = req.headers.get("x-forwarded-host") ?? req.nextUrl.host;
+  return `${proto}://${host}/api/auth/line/callback`;
 }
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const code = searchParams.get('code')
-  const state = searchParams.get('state')
-  
-  // 驗證 state 參數以防止 CSRF 攻擊
-  if (!state) {
-    return NextResponse.redirect(new URL('/login?error=invalid_state', request.url))
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const code = url.searchParams.get("code");
+  const error = url.searchParams.get("error");
+  if (error) {
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error)}`, req.nextUrl.origin));
   }
-
   if (!code) {
-    return NextResponse.redirect(new URL('/login?error=no_code', request.url))
+    return NextResponse.redirect(new URL("/login?error=missing_code", req.nextUrl.origin));
   }
 
-  try {
-    const redirectUri = resolveRedirectUri(request);
-    
-    // 使用 LINE 授權碼交換 access token
-    const tokenResponse = await fetch('https://api.line.me/oauth2/v2.1/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: redirectUri,
-        client_id: ENV.LINE_CHANNEL_ID,
-        client_secret: ENV.LINE_CHANNEL_SECRET,
-      }),
-    })
+  const redirectUri = resolveRedirectUri(req);
 
-    const tokenData = await tokenResponse.json()
+  // 1) 授權碼換 token
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: redirectUri,
+    client_id: ENV.LINE_CHANNEL_ID,
+    client_secret: ENV.LINE_CHANNEL_SECRET,
+  });
 
-    if (!tokenResponse.ok) {
-      console.error('LINE token error:', tokenData)
-      return NextResponse.redirect(new URL('/login?error=token_error', request.url))
-    }
+  const tokenRes = await fetch("https://api.line.me/oauth2/v2.1/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+    // @ts-expect-error: next runtime hints
+    cache: "no-store",
+  });
 
-    // 使用 access token 獲取用戶資料
-    const profileResponse = await fetch('https://api.line.me/v2/profile', {
-      headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
-      },
-    })
-
-    const profileData = await profileResponse.json()
-
-    if (!profileResponse.ok) {
-      console.error('LINE profile error:', profileData)
-      return NextResponse.redirect(new URL('/login?error=profile_error', request.url))
-    }
-
-    // 建立 Supabase 客戶端
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          },
-        },
-      }
-    )
-
-    // 使用 LINE 用戶 ID 作為唯一識別符
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: `${profileData.userId}@line.user`,
-      password: profileData.userId, // 使用 LINE 用戶 ID 作為密碼
-    })
-
-    if (signInError) {
-      // 如果用戶不存在，嘗試註冊
-      const { data: { user: newUser }, error: signUpError } = await supabase.auth.signUp({
-        email: `${profileData.userId}@line.user`,
-        password: profileData.userId,
-        options: {
-          data: {
-            line_user_id: profileData.userId,
-            display_name: profileData.displayName,
-            picture_url: profileData.pictureUrl,
-          }
-        }
-      })
-
-      if (signUpError) {
-        console.error('Sign up error:', signUpError)
-        return NextResponse.redirect(new URL('/login?error=signup_error', request.url))
-      }
-      
-      // 記錄新用戶創建
-      console.log('New user created:', newUser?.id)
-
-      // 重定向到註冊頁面讓用戶填寫額外資訊
-      return NextResponse.redirect(new URL(`/register?line_user_id=${profileData.userId}`, request.url))
-    }
-
-    // 登入成功，重定向到儀表板
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-
-  } catch (error) {
-    console.error('LINE callback error:', error)
-    return NextResponse.redirect(new URL('/login?error=callback_error', request.url))
+  if (!tokenRes.ok) {
+    const detail = await tokenRes.text();
+    return NextResponse.redirect(
+      new URL(`/login?error=token_exchange_failed&detail=${encodeURIComponent(detail)}`, req.nextUrl.origin)
+    );
   }
+
+  const token = await tokenRes.json();
+
+  // 2) 取使用者 profile（或驗 ID token）
+  const profileRes = await fetch("https://api.line.me/v2/profile", {
+    headers: { Authorization: `Bearer ${token.access_token}` },
+    // @ts-expect-error
+    cache: "no-store",
+  });
+  if (!profileRes.ok) {
+    const detail = await profileRes.text();
+    return NextResponse.redirect(
+      new URL(`/login?error=profile_failed&detail=${encodeURIComponent(detail)}`, req.nextUrl.origin)
+    );
+  }
+  const profile = await profileRes.json();
+
+  // 3) 設置 Session（最小必要資訊）
+  setSession({
+    provider: "line",
+    sub: profile.userId, // LINE 的使用者 id
+    name: profile.displayName,
+    picture: profile.pictureUrl ?? null,
+  });
+
+  // 4) 導回受保護頁
+  return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
 }

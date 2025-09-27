@@ -47,11 +47,11 @@ function LoginForm() {
       return
     }
 
-    // 使用動態推導的 redirect_uri，確保與 callback 一致
     const origin = window.location.origin;
     const redirectUri = process.env.NEXT_PUBLIC_LINE_REDIRECT_URI || `${origin}/api/auth/line/callback`;
+    const clientId = process.env.NEXT_PUBLIC_LINE_CLIENT_ID!;
     
-    const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_LINE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${Math.random().toString(36).substring(7)}&scope=profile%20openid`
+    const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${Math.random().toString(36).substring(7)}&scope=profile%20openid`
     window.location.href = lineAuthUrl
   }
 
@@ -136,12 +136,17 @@ function LoginForm() {
 
             {(error || urlError) && (
               <div className="text-red-600 text-sm text-center">
-                {error || (urlError === 'no_code' && '授權碼遺失') || 
-                       (urlError === 'token_error' && 'Token 錯誤') ||
-                       (urlError === 'profile_error' && '個人資料獲取失敗') ||
+                {error || (urlError === 'missing_code' && '授權碼遺失') || 
+                       (urlError === 'token_exchange_failed' && 'Token 交換失敗') ||
+                       (urlError === 'profile_failed' && '個人資料獲取失敗') ||
                        (urlError === 'signup_error' && '註冊失敗') ||
                        (urlError === 'callback_error' && '回調處理錯誤') ||
                        '登入時發生錯誤'}
+                {searchParams.get("detail") && (
+                  <pre className="mt-2 whitespace-pre-wrap break-all text-xs bg-gray-100 p-2 rounded">
+                    {searchParams.get("detail")}
+                  </pre>
+                )}
               </div>
             )}
 

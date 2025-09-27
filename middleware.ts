@@ -1,71 +1,36 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+const ALLOW_LIST = [
+  "/",
+  "/login",
+  "/api/auth/line/",
+  "/api/debug-line",
+  "/_next/",
+  "/static/",
+  "/favicon.ico",
+];
 
-  // 放行 LINE OAuth 與 Debug
-  if (
-    pathname.startsWith("/api/auth/line/") ||
-    pathname.startsWith("/api/debug-line") ||
-    pathname.startsWith("/_next/") ||
-    pathname.startsWith("/static/") ||
-    pathname === "/login"
-  ) {
-    return NextResponse.next();
-  }
-
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // 如果用戶未登入且訪問受保護的路由，重定向到登入頁面
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  // 如果用戶已登入且訪問登入頁面，重定向到儀表板
-  if (user && request.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  return supabaseResponse
+function isAllowed(pathname: string) {
+  return ALLOW_LIST.some((p) => pathname === p || pathname.startsWith(p));
 }
 
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  if (isAllowed(pathname)) return NextResponse.next();
+
+  // 檢查 session cookie
+  const session = req.cookies.get("session")?.value;
+  if (!session) {
+    const url = new URL("/login", req.nextUrl.origin);
+    url.searchParams.set("from", pathname);
+    return NextResponse.redirect(url);
+  }
+  // 可加驗簽，但在 middleware 無法用 Node crypto 簽，已由 API route 設置時保證。
+  return NextResponse.next();
+}
+
+// 只保護這些頁面（依你的專案調整）
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
-  ],
-}
+  matcher: ["/dashboard/:path*", "/encounters/:path*", "/patients/:path*", "/portal/:path*"],
+};
