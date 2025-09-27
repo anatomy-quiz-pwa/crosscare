@@ -23,15 +23,12 @@ export async function GET(req: NextRequest) {
   if (error) return backToLogin(req, { error: "oauth_error", detail: error });
   if (!code) return backToLogin(req, { error: "missing_code" });
 
-  // 檢查必要環境變數，避免送出空 client_id
   const miss = missingEnvKeys();
-  if (miss.length) {
-    return backToLogin(req, { error: "server_env_missing", detail: `Missing: ${miss.join(", ")}` });
-  }
+  if (miss.length) return backToLogin(req, { error: "server_env_missing", detail: `Missing: ${miss.join(", ")}` });
 
   const redirectUri = resolveRedirectUri(req);
 
-  // 1) 用授權碼換 token
+  // 1) token exchange
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
@@ -46,26 +43,20 @@ export async function GET(req: NextRequest) {
     body,
     cache: "no-store" as RequestCache,
   });
-
   const rawToken = await tokenRes.text();
-  if (!tokenRes.ok) {
-    return backToLogin(req, { error: "token_exchange_failed", detail: rawToken.slice(0, 800) });
-  }
+  if (!tokenRes.ok) return backToLogin(req, { error: "token_exchange_failed", detail: rawToken.slice(0, 800) });
   const token = JSON.parse(rawToken);
 
-  // 2) 取使用者 profile
+  // 2) profile
   const profileRes = await fetch("https://api.line.me/v2/profile", {
     headers: { Authorization: `Bearer ${token.access_token}` },
     cache: "no-store" as RequestCache,
   });
-
   const rawProfile = await profileRes.text();
-  if (!profileRes.ok) {
-    return backToLogin(req, { error: "profile_failed", detail: rawProfile.slice(0, 800) });
-  }
+  if (!profileRes.ok) return backToLogin(req, { error: "profile_failed", detail: rawProfile.slice(0, 800) });
   const profile = JSON.parse(rawProfile);
 
-  // 3) 設定 Session
+  // 3) session
   setSession({
     provider: "line",
     sub: profile.userId,
@@ -73,6 +64,5 @@ export async function GET(req: NextRequest) {
     picture: profile.pictureUrl ?? null,
   });
 
-  // 4) 導回受保護頁
   return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
 }

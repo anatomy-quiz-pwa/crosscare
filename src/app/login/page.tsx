@@ -1,30 +1,10 @@
 "use client";
 import React, { useMemo } from "react";
 
-function getAuthorizeUrl(redirectUri: string, clientId: string) {
-  const u = new URL("https://access.line.me/oauth2/v2.1/authorize");
-  u.searchParams.set("response_type", "code");
-  u.searchParams.set("client_id", String(clientId));
-  u.searchParams.set("redirect_uri", redirectUri);
-  u.searchParams.set("scope", "profile openid email");
-  u.searchParams.set("state", Math.random().toString(36).slice(2));
-  return u.toString();
-}
-
 export default function LoginPage() {
-  const search = typeof window !== "undefined" ? window.location.search : "";
-  const qs = useMemo(() => new URLSearchParams(search), [search]);
+  const qs = useMemo(() => new URLSearchParams(typeof window !== "undefined" ? window.location.search : ""), []);
   const error = qs.get("error");
   const detail = qs.get("detail");
-
-  const onLogin = () => {
-    const origin = window.location.origin;
-    const redirectUri =
-      process.env.NEXT_PUBLIC_LINE_REDIRECT_URI ||
-      `${origin}/api/auth/line/callback`;
-    const clientId = process.env.NEXT_PUBLIC_LINE_CLIENT_ID!;
-    window.location.href = getAuthorizeUrl(redirectUri, clientId);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -44,16 +24,13 @@ export default function LoginPage() {
                 <pre className="text-xs text-red-700 whitespace-pre-wrap break-all bg-red-100 p-2 rounded">
                   {detail}
                 </pre>
-              ) : (
-                <div className="text-red-600 text-sm">（無詳細訊息）</div>
-              )}
+              ) : null}
             </div>
           )}
 
-          {/* LINE 登入按鈕 */}
           <div className="mb-6">
             <button
-              onClick={onLogin}
+              onClick={() => (window.location.href = "/api/auth/line/authorize")}
               className="w-full bg-green-500 text-white py-3 px-4 rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center justify-center space-x-2"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
